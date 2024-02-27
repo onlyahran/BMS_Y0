@@ -1,0 +1,5 @@
+Debug/
+Release/
+.metadata
+.settings
+stm32_model-y0 JLINK.launch
