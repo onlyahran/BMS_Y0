@@ -12,7 +12,7 @@
 _stSlaveCfonfig SlaveConfig_g;
 static int16_t pec15Table[256];
 const int16_t CRC15_POLY = 0x4599;
-ltc_info ltc_info_g;
+stLtcInfo ltcInfo_g;
 
 static void init_PEC15_Table(void);
 static uint16_t PECCalculator(const uint8_t *buff, uint16_t length);
@@ -128,9 +128,9 @@ void LTC_Init(void)
 	}
 }
 
-ltc_err LTCWriteCommand(uint16_t cmd)
+enumLtcError LTCWriteCommand(uint16_t cmd)
 {
-	ltc_err err = LTC_OK;
+	enumLtcError err = LTC_OK;
 	uint8_t cmd_buff[20];
 	uint16_t tempData;
 
@@ -148,7 +148,7 @@ ltc_err LTCWriteCommand(uint16_t cmd)
 	return err;
 }
 
-ltc_err LTCSetCommand(uint16_t cmd, uint8_t len, uint8_t* pCfg)
+enumLtcError LTCSetCommand(uint16_t cmd, uint8_t len, uint8_t* pCfg)
 {
 	uint8_t cmd_buff[20];
 	uint16_t tempData;
@@ -173,7 +173,7 @@ ltc_err LTCSetCommand(uint16_t cmd, uint8_t len, uint8_t* pCfg)
 	return err;
 }
 
-ltc_err LTCReadCommand(uint16_t cmd, uint8_t* pOutBuff, uint8_t len)
+enumLtcError LTCReadCommand(uint16_t cmd, uint8_t* pOutBuff, uint8_t len)
 {
 	uint8_t cmd_buff[20];
 	uint16_t tempData;
@@ -205,12 +205,12 @@ ltc_err LTCReadCommand(uint16_t cmd, uint8_t* pOutBuff, uint8_t len)
 
 void LTC_Cfg(void)
 {
-	ltc_info_g.config[0] = 0x04;     	    // GPIO[7:3]:0, REFON:1, DTEN:0(READ ONLY), ADCOPT:0
-	ltc_info_g.config[1] = 0x00;
-	ltc_info_g.config[2] = 0x00;
-	ltc_info_g.config[3] = 0x00;
-	ltc_info_g.config[4] = 0x00;
-	ltc_info_g.config[5] = 0x80;             // DCTO:8(15 min)
+	ltcInfo_g.config[0] = 0x04;     	    // GPIO[7:3]:0, REFON:1, DTEN:0(READ ONLY), ADCOPT:0
+	ltcInfo_g.config[1] = 0x00;
+	ltcInfo_g.config[2] = 0x00;
+	ltcInfo_g.config[3] = 0x00;
+	ltcInfo_g.config[4] = 0x00;
+	ltcInfo_g.config[5] = 0x80;             // DCTO:8(15 min)
 
-	LTCSetCommand(LTC_CMD_WRCFGA, 6, ltc_info_g.config);
+	LTCSetCommand(LTC_CMD_WRCFGA, 6, ltcInfo_g.config);
 }

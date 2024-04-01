@@ -53,7 +53,7 @@ typedef enum{
 	LTC_ERR_VREG        = ( 6U),
 	LTC_ERR_VREGD       = ( 7U),
 	LTC_ERR_CSUM        = ( 8U),
-} ltc_err;
+} enumLtcError;
 
 typedef struct stSlaveCfonfig
 {
@@ -71,15 +71,15 @@ typedef struct
 	uint16_t cellvolt[4];
 	uint8_t config[8];
 	uint16_t vreg;
-} ltc_info;
+} stLtcInfo;
 
-extern ltc_info ltc_info_g;
+extern stLtcInfo ltcInfo_g;
 
 extern void LTC_Init(void);
 extern void LTCWakeUp(void);
 extern uint32_t LTCPollAdc(void);
-extern ltc_err LTCWriteCommand(uint16_t cmd);
-extern ltc_err LTCSetCommand(uint16_t cmd, uint8_t len, uint8_t* pCfg);
-extern ltc_err LTCReadCommand(uint16_t cmd, uint8_t* pOutBuff, uint8_t len);
+extern enumLtcError LTCWriteCommand(uint16_t cmd);
+extern enumLtcError LTCSetCommand(uint16_t cmd, uint8_t len, uint8_t* pCfg);
+extern enumLtcError LTCReadCommand(uint16_t cmd, uint8_t* pOutBuff, uint8_t len);
 extern void LTC_Cfg(void);
 #endif /* INC_LTCDRIVER_H_ */

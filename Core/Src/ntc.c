@@ -59,7 +59,7 @@ static void Convert_adc_to_Celsius_LUP(int adcValue, int16_t* celsius) {
 
 bool ntc_Convert_temperature(int filter_max, int16_t* temps) {
 	int i;
-	static stMedFilter ntcfilter[ADC_CHANNEL_MAX]={\
+	static stSensorFilter ntcfilter[ADC_CHANNEL_MAX]={\
 			[0 ... ADC_CHANNEL_MAX-1] = { .arr = {0}, .cnt = 0 }};
 	int16_t med[ADC_CHANNEL_MAX];
 	uint8_t ret=0;

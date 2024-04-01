@@ -58,9 +58,9 @@
 
 /* USER CODE BEGIN PV */
 //IWDG_HandleTypeDef hiwdg;
-Bat_sens bat_sens_g;
+stBatterySens batterySens_g;
 stDiagState diagState_g;
-calculated calculated_g;
+stcalculated calculated_g;
 uint8_t ver[3] = {COMM_VER, MAJOR_FW_VER, 0};
 uint8_t sip = 0;
 /* USER CODE END PV */
@@ -139,7 +139,7 @@ int main(void)
 	{
 		while(true)
 		{
-			fsmTestEvent();
+			test_FsmEvent();
 			checkCANBuffer();
 		}
 	}

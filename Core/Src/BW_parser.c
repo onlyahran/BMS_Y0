@@ -202,34 +202,34 @@ void InternalDataParser(uint32_t id, uint8_t *pBuff, uint8_t len)
 				frame[index++] = (uint8_t)(CANTP_TEST_VALUE >> 0) & 0xFF;
 				frame[index++] = (uint8_t)(CANTP_TEST_VALUE >> 8) & 0xFF;
 #else
-				frame[index++] = (uint8_t)(bat_sens_g.avgCurrent >> 0) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.avgCurrent >> 8) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.avgCurrent >> 0) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.avgCurrent >> 8) & 0xFF;
 #endif
 			} else if (cmd & CANTP_TX_CELL_100) {
-				frame[1] = sizeof(bat_sens_g.cellVoltage)+2; //(4*2)+2=0xA
+				frame[1] = sizeof(batterySens_g.cellVoltage)+2; //(4*2)+2=0xA
 #ifdef CANTP_TEST_VALUE
 				frame[index++] = (uint8_t)(CANTP_TEST_VALUE >> 0) & 0xFF;
 				frame[index++] = (uint8_t)(CANTP_TEST_VALUE >> 8) & 0xFF;
 				frame[index++] = (uint8_t)(CANTP_TEST_VALUE >> 16) & 0xFF;
 				frame[index++] = (uint8_t)(CANTP_TEST_VALUE >> 24) & 0xFF;
 #else
-				frame[index++] = (uint8_t)(bat_sens_g.cellVoltage[0] >> 0) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.cellVoltage[0] >> 8) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.cellVoltage[1] >> 0) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.cellVoltage[1] >> 8) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.cellVoltage[0] >> 0) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.cellVoltage[0] >> 8) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.cellVoltage[1] >> 0) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.cellVoltage[1] >> 8) & 0xFF;
 #endif
 			} else if (cmd & CANTP_TX_TEMPS_100) {
-				frame[1] = sizeof(bat_sens_g.Temperature)+2; //(6*2)+2=0xE
+				frame[1] = sizeof(batterySens_g.Temperature)+2; //(6*2)+2=0xE
 #ifdef CANTP_TEST_VALUE
 				frame[index++] = (uint8_t)(CANTP_TEST_VALUE >> 0) & 0xFF;
 				frame[index++] = (uint8_t)(CANTP_TEST_VALUE >> 8) & 0xFF;
 				frame[index++] = (uint8_t)(CANTP_TEST_VALUE >> 16) & 0xFF;
 				frame[index++] = (uint8_t)(CANTP_TEST_VALUE >> 24) & 0xFF;
 #else
-				frame[index++] = (uint8_t)(bat_sens_g.Temperature[0] >> 0) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.Temperature[0] >> 8) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.Temperature[1] >> 0) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.Temperature[1] >> 8) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.Temperature[0] >> 0) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.Temperature[0] >> 8) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.Temperature[1] >> 0) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.Temperature[1] >> 8) & 0xFF;
 #endif
 			}
 			sendCan(CANTP_ID_RES, frame, CANTP_PACKET_LEN);
@@ -265,8 +265,8 @@ void InternalDataParser(uint32_t id, uint8_t *pBuff, uint8_t len)
 				index = 0;
 				memset(frame, 0, CANTP_PACKET_LEN);
 				frame[index++] = 0x23;
-				frame[index++] = (uint8_t)(bat_sens_g.packVoltage >> 0) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.packVoltage >> 8) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.packVoltage >> 0) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.packVoltage >> 8) & 0xFF;
 				frame[index++] = 0;
 				frame[index++] = 0;
 				frame[index++] = 0;
@@ -284,27 +284,27 @@ void InternalDataParser(uint32_t id, uint8_t *pBuff, uint8_t len)
 				sendCan(CANTP_ID_RES, frame, CANTP_PACKET_LEN);
 #else
 				frame[0] = 0x21;
-				frame[index++] = (uint8_t)(bat_sens_g.cellVoltage[2] >> 0) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.cellVoltage[2] >> 8) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.cellVoltage[3] >> 0) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.cellVoltage[3] >> 8) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.cellVoltage[2] >> 0) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.cellVoltage[2] >> 8) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.cellVoltage[3] >> 0) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.cellVoltage[3] >> 8) & 0xFF;
 				sendCan(CANTP_ID_RES, frame, CANTP_PACKET_LEN);
 #endif
 			} else if (cmd & CANTP_TX_TEMPS_100) {
 				frame[0] = 0x21;
-				frame[index++] = (uint8_t)(bat_sens_g.Temperature[2] >> 0) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.Temperature[2] >> 8) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.Temperature[3] >> 0) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.Temperature[3] >> 8) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.Temperature[4] >> 0) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.Temperature[4] >> 8) & 0xFF;
-				frame[index++] = (uint8_t)(bat_sens_g.Temperature[5] >> 0) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.Temperature[2] >> 0) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.Temperature[2] >> 8) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.Temperature[3] >> 0) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.Temperature[3] >> 8) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.Temperature[4] >> 0) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.Temperature[4] >> 8) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.Temperature[5] >> 0) & 0xFF;
 				sendCan(CANTP_ID_RES, frame, CANTP_PACKET_LEN);
 
 				index = 0;
 				memset(frame, 0, CANTP_PACKET_LEN);
 				frame[0] = 0x22;
-				frame[index++] = (uint8_t)(bat_sens_g.Temperature[5] >> 8) & 0xFF;
+				frame[index++] = (uint8_t)(batterySens_g.Temperature[5] >> 8) & 0xFF;
 				sendCan(CANTP_ID_RES, frame, CANTP_PACKET_LEN);
 			}
 		}

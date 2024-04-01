@@ -16,26 +16,11 @@
 
 #include "main.h"
 
-enum {
-    LTCBMS_STAT_ADC = 0,
-    LTCBMS_STAT_FAULT,
-};
+_LTCBMS_EXT bool bmsCtrl_Gpio_g;
+_LTCBMS_EXT uint8_t bmsCtrl_Bal_g;
 
-enum {
-	LTCBMS_DEF = 0,
-	LTCBMS_ON,
-	LTCBMS_OFF,
-};
-
-typedef struct {
-	uint8_t st;
-	uint8_t gpio;
-	bool gpio_st;
-	uint8_t bal;
-	bool bal_st;
-}ltcbms_status;
-
-_LTCBMS_EXT ltcbms_status ltc_stat_g;
-_LTCBMS_EXT void ltcbms_Fsm(void);
-
+_LTCBMS_EXT bool bmsLtcStatus_g;
+_LTCBMS_EXT bool ltcbms_Fsm(stBatterySens *sens);
+_LTCBMS_EXT bool test_ltcBms_Fan(void);
+_LTCBMS_EXT bool test_ltcBms_Balancing(void);
 #endif /* INC_LTCBMS_H_ */

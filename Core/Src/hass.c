@@ -42,7 +42,7 @@ static void Convert_to_current(uint8_t sensor, int16_t value, int16_t *raw) {
 
 bool hass_Convert_current(int filter_max, int16_t* value) {
 	int i;
-	static stMedFilter filter[MCP_NUM]={\
+	static stSensorFilter filter[MCP_NUM]={\
 		[0 ... MCP_NUM-1] = { .arr = {0}, .cnt = 0 }};
 	int16_t med[MCP_NUM];
 	uint8_t ret=0;

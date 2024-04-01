@@ -24,7 +24,7 @@ int findMedian(int* values, int size) {
     return copied[size / 2];
 }
 
-bool adcFilter_Med(stMedFilter *filter, int filter_max, int adc_raw, int* med) {
+bool adcFilter_Med(stSensorFilter *filter, int filter_max, int adc_raw, int* med) {
 	filter->arr[filter->cnt++] = adc_raw;
     if (filter->cnt == filter_max) {
     	filter->cnt = 0;

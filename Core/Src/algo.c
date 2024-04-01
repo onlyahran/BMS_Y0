@@ -9,51 +9,55 @@
 #include "ltcBms.h"
 #include "BW_parser.h"
 
-const uint16_t UnderVolt=25500;
-const uint16_t OverVolt=36500;
-//const uint16_t VolTLimit1 = 31000;
-//const uint16_t VoltLimit2 = 33400;
-//const uint16_t VoltLimit3 = 35000;
-//const uint16_t VoltLimit4 = 36000;
-//const uint16_t VoltLimit5 = 36500;
-
-const int16_t UnderCurrent=-4000;
-const int16_t OverCurrent=4000;
-//const int16_t CurrentLimit1=-2000;
-//const int16_t CurrentLimit2=-200;
-//const int16_t CurrentLimit3=-50;
-//const int16_t CurrentLimit4=50;
-//const int16_t CurrentLimit5=200;
-//const int16_t CurrentLimit6=500;
-//const int16_t CurrentLimit7=2000;
-
-const int16_t UnderTemps=-200;
-const int16_t CellOverTemps=700;
-const int16_t BoardOverTemps=1200;
-//const int16_t TempsLimit1=600;
-const uint16_t ErrNTCDev=20;
-
-const uint8_t NumOfCellCh = LTCBMS_CELLNUM;
-const uint8_t NumOfHASS = MCP_NUM;
-const uint8_t NumOfNTC = ADC_CHANNEL_MAX;
-
+const uint16_t UnderVoltLimit=25500;
+const uint16_t OverVoltLimit=36500;
+const int16_t UnderCurrentLimit_l=-2500;
+const int16_t OverCurrentLimit_l=2500;
+const int16_t UnderCurrentLimit_h=-3000;
+const int16_t OverCurrentLimit_h=3000;
+const int16_t UnderTempsLimit=-200;
+const int16_t CellOverTempsLimit=700;
+const int16_t BoardOverTempsLimit=1200;
+const uint16_t DevTempsLimit = 5;
 const uint8_t PeriodChange = 2;
 
-bms_safety_flag safety_g;
-bms_safety_flag safety_info_g;
-bms_sensor_value sensor_val;
+const uint16_t THRESHOLD_VOLTAGE_1=100;
+const uint16_t THRESHOLD_VOLTAGE_2=300;
+const uint16_t MAX_ABS_CURRENT_1 =50;
+const uint16_t MAX_ABS_CURRENT_2 =200;
+const uint16_t MIN_VOLTAGE_THRESHOLD =33400;
+const uint16_t MAX_VOLTAGE_THRESHOLD =36500;
 
-int16_t TempsOld[ADC_CHANNEL_MAX] = {0, };
-int16_t TempsNew[ADC_CHANNEL_MAX] = {0, };
+#define WINDOW_FAULT_CELLV                        (2) // 1sec
+#define WINDOW_FAULT_I_low                        (20) // 10sec
+#define WINDOW_FAULT_I_high                       (6) // 3sec
+#define WINDOW_FAULT_TEMPS                        (2) // 1sec
 
-uint8_t m0_cnt=0;
+stBmsSafetyFlag safetyFlag;
+stBatterySens batterySens_algo;
+static uint8_t m0_cnt=0;
 
 static stRelayInfo relayInfo_g = {
 	.state = MODE_7,
 	.old_state = MODE_7,
 };
+
+float avgCellV;
+static uint16_t data_v[NumOfCellCh][WINDOW_FAULT_CELLV] = {0};
+static uint8_t index_v[NumOfCellCh] = {0};
+float avgCellI;
+static uint16_t data_l[NumOfHASS][WINDOW_FAULT_I_low] = {0};
+static uint16_t data_h[NumOfHASS][WINDOW_FAULT_I_high] = {0};
+static uint8_t index_l[NumOfHASS] = {0};
+static uint8_t index_h[NumOfHASS] = {0};
+float avgTemps = 0;
+static float avgTempsOld = 0;
+static uint16_t data_t[NumOfNTC][WINDOW_FAULT_TEMPS] = {0};
+static uint8_t index_t[NumOfNTC] = {0};
+static uint8_t devTempsCounts = 0;
+
 static void switchMode(uint8_t target);
-static void compareAdjacent(int num0, int num1);
+static float calculateAverage(int data[], int size);
 
 static void switchMode(uint8_t target)
 {
@@ -69,198 +73,245 @@ static void switchMode(uint8_t target)
 		}
 		HAL_GPIO_WritePin(RELAY_DIODE1_GPIO_Port, RELAY_DIODE1_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(RELAY_DIODE2_GPIO_Port, RELAY_DIODE2_Pin, GPIO_PIN_RESET);
+#ifndef TEST_OTA
+		HAL_GPIO_WritePin(LED1_NOTI_GPIO_Port, LED1_NOTI_Pin, GPIO_PIN_SET);
+#endif
 		break;
 
 	case MODE_1:
 		HAL_GPIO_WritePin(RELAY_MAIN_GPIO_Port, RELAY_MAIN_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(RELAY_DIODE1_GPIO_Port, RELAY_DIODE1_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(RELAY_DIODE2_GPIO_Port, RELAY_DIODE2_Pin, GPIO_PIN_SET);
+
+#ifndef TEST_OTA
+		HAL_GPIO_WritePin(LED1_NOTI_GPIO_Port, LED1_NOTI_Pin, GPIO_PIN_SET);
+#endif
 		break;
 
 	case MODE_2:
 		HAL_GPIO_WritePin(RELAY_MAIN_GPIO_Port, RELAY_MAIN_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(RELAY_DIODE1_GPIO_Port, RELAY_DIODE1_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(RELAY_DIODE2_GPIO_Port, RELAY_DIODE2_Pin, GPIO_PIN_SET);
+
+#ifndef TEST_OTA
+		HAL_GPIO_WritePin(LED1_NOTI_GPIO_Port, LED1_NOTI_Pin, GPIO_PIN_SET);
+#endif
 		break;
 
 	case MODE_3:
 		HAL_GPIO_WritePin(RELAY_MAIN_GPIO_Port, RELAY_MAIN_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(RELAY_DIODE1_GPIO_Port, RELAY_DIODE1_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(RELAY_DIODE2_GPIO_Port, RELAY_DIODE2_Pin, GPIO_PIN_SET);
+
+#ifndef TEST_OTA
+		HAL_GPIO_WritePin(LED1_NOTI_GPIO_Port, LED1_NOTI_Pin, GPIO_PIN_SET);
+#endif
 		break;
 
-	case MODE_7:
+	case MODE_STOP:
 		HAL_GPIO_WritePin(RELAY_MAIN_GPIO_Port, RELAY_MAIN_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(RELAY_DIODE1_GPIO_Port, RELAY_DIODE1_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(RELAY_DIODE2_GPIO_Port, RELAY_DIODE2_Pin, GPIO_PIN_RESET);
+#ifndef TEST_OTA
+		HAL_GPIO_WritePin(LED1_NOTI_GPIO_Port, LED1_NOTI_Pin, GPIO_PIN_SET);
+#endif
 		break;
 
 	default:
 		HAL_GPIO_WritePin(RELAY_MAIN_GPIO_Port, RELAY_MAIN_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(RELAY_DIODE1_GPIO_Port, RELAY_DIODE1_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(RELAY_DIODE2_GPIO_Port, RELAY_DIODE2_Pin, GPIO_PIN_RESET);
+
+		HAL_GPIO_WritePin(LED1_NOTI_GPIO_Port, LED1_NOTI_Pin, GPIO_PIN_RESET);
 		break;
 	}
 }
 
-uint8_t getSwitchMode(void)
-{
+uint8_t getSwitchMode(void) {
 	return relayInfo_g.state;
 }
 
-void relayInit(void)
-{
+void relayInit(void) {
 	relayInfo_g.state = MODE_7;
 	relayInfo_g.old_state = MODE_7;
 	switchMode(MODE_7);
 }
 
-bool bms_safetycheck_cellV(void) {
-	int i;
-	static uint8_t cnt = 0;
+static float calculateAverage(int data[], int size) {
+    int sum = 0;
+    for (int i = 0; i < size; i++) {
+        sum += data[i];
+    }
+    return (float)sum / size;
+}
 
-	if (!calculated_g.ltc || ltc_stat_g.st == LTCBMS_STAT_FAULT) {
+bool bmsSafety_Check_CellV(stBatterySens *sens) {
+	int i;
+
+	if (!bmsLtcStatus_g) {
 		return false;
 	}
+
     for (i=0; i<NumOfCellCh; i++) {
-        if (bat_sens_g.cellVoltage[i] < UnderVolt) {
-        	safety_g.cellV[i] = UV;
+        if (sens->cellVoltage[i] < UnderVoltLimit) {
+        	safetyFlag.cellV[i] = BMS_SAFETY_WARNING_UV;
+        } else if (sens->cellVoltage[i] > OverVoltLimit) {
+        	safetyFlag.cellV[i] = BMS_SAFETY_WARNING_OV;
+        } else {
+            continue;
         }
-        if (bat_sens_g.cellVoltage[i] > OverVolt) {
-        	safety_g.cellV[i] = OV;
-        }
-    }
-	for (i=0; i<NumOfCellCh; i++) {
-    	if (safety_g.cellV[i] & (UV | OV)) {
-            cnt++;
-            break;
-        }
-    }
 
-	if(cnt >= 2) { // over 2 counts (= 1sec)
-		cnt = 0;
-		switchMode(MODE_STOP);
-		return false;
-	} else if (cnt == 1) {
-        return false;
-    } else {
-    	cnt = 0;
-		memcpy(&sensor_val.cellV, &bat_sens_g.cellVoltage, NumOfCellCh);
-		sensor_val.mincellV = bat_sens_g.minVoltage;
-		sensor_val.maxcellV = bat_sens_g.maxVoltage;
-	}
+        data_v[i][index_v[i]] = sens->cellVoltage[i];
+        index_v[i] = (index_v[i]+1) % WINDOW_FAULT_CELLV;
 
-	return true;
-}
+        if (index_v[i] >= (WINDOW_FAULT_CELLV-1)) {
+            avgCellV = calculateAverage((int*)data_v[i], WINDOW_FAULT_CELLV);
 
-bool bms_safetycheck_I(void) {
-	int i;
-	static uint8_t cnt = 0;
+            if (avgCellV < UnderVoltLimit) {
+                safetyFlag.cellV[i] = BMS_SAFETY_FAULT_UV;
+            } else if (avgCellV > OverVoltLimit) {
+                safetyFlag.cellV[i] = BMS_SAFETY_FAULT_OV;
+            } else {
+                safetyFlag.cellV[i] = 0;
+            }
 
-	if (!calculated_g.hass) {
-		return false;
-	}
-    for ( i=0; i<NumOfHASS; i++) {
-        if (bat_sens_g.crntSensor[i] < UnderCurrent) {
-        	safety_g.I[i] = UC;
-        }
-        if (bat_sens_g.crntSensor[i] > OverCurrent) {
-        	safety_g.I[i] = OC;
-        }
-    }
-	for (i=0; i<NumOfHASS; i++) {
-    	if (safety_g.I[i] & (UC | OC)) {
-            cnt++;
-            break;
+            memset(data_v[i], 0, sizeof(data_v[i]));
+            index_v[i] = 0;
         }
     }
 
-	if(cnt >= 2) { // over 2 counts (= 1sec)
-		cnt = 0;
-		switchMode(MODE_STOP);
-		return false;
-	} else if (cnt == 1) {
-        return false;
-    } else {
-    	cnt = 0;
-		sensor_val.packI = bat_sens_g.avgCurrent;
-	}
-
-	return true;
-}
-
-static void compareAdjacent(int num0, int num1) {
-	bool ret0 = true; // no fault
-	bool ret1 = true; // no fault
-
-	if (abs(TempsNew[num0] - TempsNew[num1]) > ErrNTCDev) { // compare adjacent values A,B
-		if (abs(TempsOld[num0] - TempsNew[num0]) > ErrNTCDev) { // compare old and new of A
-			ret0 = false;
-		}
-		if (abs(TempsOld[num1] - TempsNew[num1]) > ErrNTCDev) { // compare old and new of B
-			ret1 = false;
-		}
-
-		if (ret0 && !ret1){
-			sensor_val.T[num0] = TempsNew[num0];
-			sensor_val.T[num1] = TempsNew[num0];
-		} else if (!ret0 && ret1){
-			sensor_val.T[num0] = TempsNew[num1];
-			sensor_val.T[num1] = TempsNew[num1];
-		} else {
-			sensor_val.T[num0] = TempsNew[num0];
-			sensor_val.T[num1] = TempsNew[num1];
-		}
-	} else {
-		sensor_val.T[num0] = TempsNew[num0];
-		sensor_val.T[num1] = TempsNew[num1];
-	}
-	TempsOld[num0] = sensor_val.T[num0];
-	TempsOld[num1] = sensor_val.T[num1];
-}
-
-bool bms_safetycheck_T(void) {
-    static uint8_t cnt = 0;
-    static bool initialised = false;
-
-    if (!calculated_g.ntc) return false;
-
-    for (int i = 0; i < NumOfNTC; i++) {
-        if (bat_sens_g.Temperature[i] < UnderTemps) safety_g.T[i] = UT;
-        else if ((i <= 3 && bat_sens_g.Temperature[i] >= BoardOverTemps) ||
-                 (i > 3 && bat_sens_g.Temperature[i] >= CellOverTemps)) safety_g.T[i] = (i <= 3) ? boardOT : cellOT;
-    }
-
-    for (int i = 0; i < NumOfNTC; i++) {
-        if (safety_g.T[i] & (UT | boardOT | cellOT)) {
-            cnt++;
-            break;
+    for (i=0; i<NumOfCellCh; i++) {
+        if (safetyFlag.cellV[i] == BMS_SAFETY_FAULT_UV || safetyFlag.cellV[i] == BMS_SAFETY_FAULT_OV) {
+            switchMode(MODE_STOP);
+            return false;
         }
-    }
-
-    if (cnt >= 2) {
-        cnt = 0;
-        switchMode(MODE_STOP);
-        return false;
-    } else if (cnt == 1) {
-        return false;
-    } else {
-        cnt = 0;
-        memcpy(&TempsNew, &bat_sens_g.Temperature, NumOfNTC);
-        if (!initialised) {
-            initialised = true;
-            memcpy(&TempsOld, &TempsNew, NumOfNTC);
-        }
-
-        compareAdjacent(TEMP_MAIN_A, TEMP_MAIN_B);
-        compareAdjacent(TEMP_DIODE_1, TEMP_DIODE_2);
-        compareAdjacent(TEMP_BAT_A, TEMP_BAT_B);
     }
 
     return true;
 }
 
-void bms_fet_control(void) {
+
+bool bmsSafety_Check_I(stBatterySens *sens) {
+	int i;
+
+	if (calculated_g.hass== false) {
+		return false;
+	}
+
+    for (i=0; i<NumOfHASS; i++) {
+        if (sens->crntSensor[i] < UnderCurrentLimit_l) {
+        	safetyFlag.I[i] = BMS_SAFETY_WARNING_UC;
+        } else if (sens->crntSensor[i] > OverCurrentLimit_l) {
+        	safetyFlag.I[i] = BMS_SAFETY_WARNING_OC;
+        } else {
+            continue;
+        }
+
+        data_l[i][index_l[i]] = sens->crntSensor[i];
+        data_h[i][index_h[i]] = sens->crntSensor[i];
+
+        index_l[i] = (index_l[i]+1) % WINDOW_FAULT_I_low;
+        index_h[i] = (index_h[i]+1) % WINDOW_FAULT_I_high;
+
+        if (index_l[i] >= (WINDOW_FAULT_I_low-1)) {
+            avgCellI = calculateAverage((int*)data_l[i], WINDOW_FAULT_I_low);
+
+            if (avgCellI < UnderCurrentLimit_l) {
+                safetyFlag.I[i] = BMS_SAFETY_FAULT_UC;
+            } else if (avgCellI > OverCurrentLimit_l) {
+                safetyFlag.I[i] = BMS_SAFETY_FAULT_OC;
+            } else {
+                safetyFlag.I[i] = 0;
+            }
+
+            memset(data_l[i], 0, sizeof(data_l[i]));
+            index_l[i] = 0;
+        }
+
+        if (index_h[i] >= (WINDOW_FAULT_I_high-1)) {
+            avgCellI = calculateAverage((int*)data_h[i], WINDOW_FAULT_I_high);
+
+            if (avgCellI < UnderCurrentLimit_h) {
+                safetyFlag.I[i] = BMS_SAFETY_FAULT_UC;
+            } else if (avgCellI > OverCurrentLimit_h) {
+                safetyFlag.I[i] = BMS_SAFETY_FAULT_OC;
+            } else {
+                safetyFlag.I[i] = 0;
+            }
+
+            memset(data_h[i], 0, sizeof(data_h[i]));
+            index_h[i] = 0;
+        }
+    }
+
+    for (i=0; i<NumOfHASS; i++) {
+        if (safetyFlag.I[i] == BMS_SAFETY_FAULT_UC || safetyFlag.I[i] == BMS_SAFETY_FAULT_OC) {
+        	switchMode(MODE_STOP);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool bmsSafety_Check_Temps(stBatterySens *sens) {
+	int i;
+    static bool init =false;
+
+	if (calculated_g.ntc==false) {
+		return false;
+	}
+
+    for (i=0; i<NumOfNTC; i++) {
+        data_t[i][index_t[i]] = sens->Temperature[i];
+        index_t[i] = (index_t[i]+1) % WINDOW_FAULT_TEMPS;
+
+        if (index_t[i] >= (WINDOW_FAULT_TEMPS-1)) {
+            avgTemps = calculateAverage((int*)data_t[i], WINDOW_FAULT_TEMPS);
+            if (!init) {
+            	init=true;
+            	avgTempsOld = avgTemps;
+            }
+
+            if (avgTemps < UnderTempsLimit) {
+                safetyFlag.T[i] = BMS_SAFETY_FAULT_UT;
+            } else {
+                if(((i<=3 && avgTemps > BoardOverTempsLimit) ||
+                    (i>3 && avgTemps > CellOverTempsLimit))){
+                    safetyFlag.T[i] = BMS_SAFETY_FAULT_OT;
+                } else {
+                    safetyFlag.T[i] = 0;
+                }
+            }
+
+            int avgDevTemps = (int)(avgTemps - avgTempsOld);
+            if(abs(avgDevTemps) > DevTempsLimit) {
+            	devTempsCounts++;
+            	if(devTempsCounts > 2) {
+                	safetyFlag.T[i] = BMS_SAFETY_FAULT_DEV_T;
+                	devTempsCounts = 0;
+            	}
+            }
+            avgTempsOld = avgTemps;
+
+            memset(data_t[i], 0, sizeof(data_t[i]));
+            index_t[i] = 0;
+        }
+    }
+
+    for (i=0; i<NumOfNTC; i++) {
+        if (safetyFlag.T[i] == BMS_SAFETY_FAULT_UT \
+        	|| safetyFlag.T[i] == BMS_SAFETY_FAULT_OT \
+			|| safetyFlag.T[i] == BMS_SAFETY_FAULT_DEV_T) {
+        	switchMode(MODE_STOP);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void bmsCtrl_Fet(stBatterySens *sens) {
 	static uint8_t m7_r1=0;
 	static uint8_t m7_r2=0;
 	static uint8_t m7_r3=0;
@@ -277,15 +328,15 @@ void bms_fet_control(void) {
 
 	switch (relayInfo_g.state) {
 	case MODE_7:
-		if ((sensor_val.mincellV < 31000) && (sensor_val.maxcellV < 36000)) {
+		if ((sens->minVoltage < 31000) && (sens->maxVoltage < 36000)) {
 			m7_r1++;
 			m7_r2=0;
 			m7_r3=0;
-		} else if ((sensor_val.mincellV >= 31000) && (sensor_val.maxcellV < 35000)) {
+		} else if ((sens->minVoltage >= 31000) && (sens->maxVoltage < 35000)) {
 			m7_r2++;
 			m7_r1=0;
 			m7_r3=0;
-		} else if ((sensor_val.mincellV >= 35000) && (sensor_val.maxcellV < 36000)) {
+		} else if ((sens->minVoltage >= 35000) && (sens->maxVoltage < 36000)) {
 			m7_r3++;
 			m7_r1=0;
 			m7_r2=0;
@@ -311,12 +362,12 @@ void bms_fet_control(void) {
 			m0_cnt = CNT_RELAY_MODE0;
 		}
 
-		if (((sensor_val.mincellV < 31000) && (sensor_val.maxcellV < 35000))\
-			&& ((sensor_val.packI >= 500) && (sensor_val.packI < OverCurrent))) {
+		if (((sens->minVoltage < 31000) && (sens->maxVoltage < 35000))\
+			&& ((sens->avgCurrent >= 500) && (sens->avgCurrent < OverCurrentLimit_l))) {
 			m0_r1++;
 			m0_r2=0;
-		} else if (((sensor_val.mincellV >= 31000) && (sensor_val.maxcellV < 35000))\
-			&& ((sensor_val.packI >= UnderCurrent) && (sensor_val.packI < OverCurrent))) {
+		} else if (((sens->minVoltage >= 31000) && (sens->maxVoltage < 35000))\
+			&& ((sens->avgCurrent >= UnderCurrentLimit_l) && (sens->avgCurrent < OverCurrentLimit_l))) {
 			m0_r2++;
 			m0_r1=0;
 		} else {
@@ -334,10 +385,10 @@ void bms_fet_control(void) {
 		}
 		break;
 	case MODE_1:
-		if ((sensor_val.mincellV < 31000) && (sensor_val.maxcellV < 36000)) {
+		if ((sens->minVoltage < 31000) && (sens->maxVoltage < 36000)) {
 			m1_r1++;
 			m1_r2=0;
-		} else if ((sensor_val.mincellV >= 36000) && (sensor_val.maxcellV < 36500)) {
+		} else if ((sens->minVoltage >= 36000) && (sens->maxVoltage < 36500)) {
 			m1_r2++;
 			m1_r1=0;
 		} else {
@@ -365,32 +416,32 @@ void bms_fet_control(void) {
 			BackUp_SRAM_Write(BKUP_ADDR_LOCAL_CAC, (uint32_t)diagState_g.fSAC);
 			diagState_g.localCAC =(int32_t)BackUp_SRAM_Read(BKUP_ADDR_LOCAL_CAC);
 		}
-		if (sensor_val.mincellV < 31000) {
+		if (sens->minVoltage < 31000) {
 			m3_r1++;
 			m3_r2=0;
 			m3_r3=0;
 			m3_r4=0;
 			m3_r5=0;
-		} else if ((sensor_val.mincellV >= 31000) && (sensor_val.maxcellV < 33000)) {
+		} else if ((sens->minVoltage >= 31000) && (sens->maxVoltage < 33000)) {
 			m3_r2++;
 			m3_r1=0;
 			m3_r3=0;
 			m3_r4=0;
 			m3_r5=0;
-		} else if ((sensor_val.mincellV >= 31000) && (sensor_val.maxcellV < 34000) && (getPackSOC() < 95)) {
+		} else if ((sens->minVoltage >= 31000) && (sens->maxVoltage < 34000) && (getPackSOC() < 95)) {
 			m3_r3++;
 			m3_r1=0;
 			m3_r2=0;
 			m3_r4=0;
 			m3_r5=0;
-		} else if ((sensor_val.mincellV >= 31000) && (sensor_val.maxcellV < 34000) && ((diagState_g.localCAC - diagState_g.SAC) > 500)) {
+		} else if ((sens->minVoltage >= 31000) && (sens->maxVoltage < 34000) && ((diagState_g.localCAC - diagState_g.SAC) > 500)) {
 			m3_r4++;
 			m3_r1=0;
 			m3_r2=0;
 			m3_r3=0;
 			m3_r5=0;
-		} else if ((sensor_val.mincellV >= 31000) && (sensor_val.maxcellV < 36500) \
-				&& (sensor_val.packI >= -4000) && (sensor_val.packI < 0)) {
+		} else if ((sens->minVoltage >= 31000) && (sens->maxVoltage < 36500) \
+				&& (sens->avgCurrent >= -4000) && (sens->avgCurrent < 0)) {
 			m3_r5++;
 			m3_r1=0;
 			m3_r2=0;
@@ -431,53 +482,49 @@ void bms_fet_control(void) {
 		}
 		break;
 	case MODE_STOP:
-
 		break;
 	}
 }
 
 
-void bms_fan_control(void) {
+void bmsCtrl_Fan(stBatterySens *sens) {
 	int i;
 
 	for (i=2; i<4; i++) { // DIODE
-		if ((sensor_val.T[i] >= 600) && (sensor_val.T[i] < 1200)) {
-			ltc_stat_g.gpio = LTCBMS_ON;
-			ltc_stat_g.gpio_st = true;
-			break;
-		}
-		else {
-			ltc_stat_g.gpio = LTCBMS_OFF;
+		if ((sens->Temperature[i] >= 600) && (sens->Temperature[i] < 1200)) {
+			bmsCtrl_Gpio_g = true;
+		} else {
+			bmsCtrl_Gpio_g = false;
 		}
 	}
 }
 
-void bms_ltc_balancing(void) {
-    int i;
+void bmsCtrl_Balancing(stBatterySens *sens) {
     uint16_t thres_volt;
-    uint8_t cmd;
 
-    if (sensor_val.mincellV >= 33400 && sensor_val.maxcellV < 36500) {
-        if (abs(sensor_val.packI) < 50){
-        	thres_volt =  100;
-        } else if (abs(sensor_val.packI) < 200){
-        	thres_volt =  300;
+    if (sens->minVoltage < MIN_VOLTAGE_THRESHOLD || sens->maxVoltage > MAX_VOLTAGE_THRESHOLD) {
+        bmsCtrl_Bal_g = 0;
+        return;
+    }
+
+    if (abs(sens->avgCurrent) < MAX_ABS_CURRENT_1) {
+        thres_volt = THRESHOLD_VOLTAGE_1;
+    } else if (abs(sens->avgCurrent) < MAX_ABS_CURRENT_2) {
+        thres_volt = THRESHOLD_VOLTAGE_2;
+    } else {
+        bmsCtrl_Bal_g = 0;
+        return;
+    }
+
+    for (int i = 0; i < 4; i++) {
+        uint8_t cmd = (i > 1) ? i + 6 : i;
+        if (sens->cellVoltage[i] == sens->minVoltage) {
+            continue;
+        }
+        if ((sens->cellVoltage[i] - sens->minVoltage) > thres_volt) {
+            bmsCtrl_Bal_g |= (1 << cmd);
         } else {
-			ltc_stat_g.bal=0;
-        	return;
+            bmsCtrl_Bal_g &= ~(1 << cmd);
         }
-
-        for (i = 0; i < 4; i++) {
-        	cmd = (i > 1) ? i + 6 : i;
-        	if ((sensor_val.cellV[i] - sensor_val.mincellV) > thres_volt) {
-				ltc_stat_g.bal |= (1 << cmd);
-			} else {
-				ltc_stat_g.bal &= (~(1 << cmd));
-			}
-        }
-		ltc_stat_g.bal_st = (ltc_stat_g.bal > 0);
-
-    } else{
-    	ltc_stat_g.bal=0;
     }
 }

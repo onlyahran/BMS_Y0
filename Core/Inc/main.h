@@ -119,9 +119,10 @@ uint32_t BackUp_SRAM_Read(uint32_t offset);
 /* USER CODE BEGIN Private defines */
 
 #define DEBUGGING
+#define TEST_OTA
 
 // add cantp, 2023-12-08
-#define CANTP_ENABLE                           (1)
+#define CANTP_ENABLE                           (0)
 #ifdef CANTP_ENABLE
 #define CANTP_TEST_VALUE                       (0xAABBCCDD)
 #endif
@@ -196,8 +197,7 @@ typedef enum{
 	TYPE_AC_CONV_Ah_TO_10mAh,
 	TYPE_AC_CONV_Aper6Min_TO_10mAh,
 	TYPE_AC_CONV_INITIAL,
-}enumTypeAC;
-
+} enumTypeAC;
 
 typedef enum{
 	HASS_MAIN_50S     =    0U,
@@ -228,11 +228,11 @@ typedef struct
 	uint16_t minVoltage;
 	uint16_t maxVoltage;
 	uint16_t packVoltage;
+	int16_t avgCurrent;      // 100mA/1Sec
 	int16_t crntSensor[MCP_NUM];
 	int16_t Temperature[ADC_CHANNEL_MAX];
-	int16_t avgCurrent;      // 100mA/1Sec
 	float favgCurrent;
-} Bat_sens;
+} stBatterySens;
 
 typedef struct
 {
@@ -241,17 +241,17 @@ typedef struct
 	float fSAC;                  // 10mAh
 	float fSAAC;                 // 10mAh
 	int32_t localCAC;            // 10mAh
-}stDiagState;
+} stDiagState;
 
 typedef struct {
 	bool ltc;
 	bool hass;
 	bool ntc;
-}calculated;
+} stcalculated;
 
-extern Bat_sens bat_sens_g;
+extern stBatterySens batterySens_g;
 extern stDiagState diagState_g;
-extern calculated calculated_g;
+extern stcalculated calculated_g;
 extern uint8_t hw_ver;
 
 // CAN

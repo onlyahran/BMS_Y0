@@ -48,7 +48,7 @@ void send_GUI(void)
 	uint8_t tx_buff[20];
 	static uint16_t seq_num = 0;
 
-	tempU16 = bat_sens_g.packVoltage;
+	tempU16 = batterySens_g.packVoltage;
 	memcpy(tx_buff, (uint8_t*)&tempU16, 2);
 	if(getPackSOC() == -1) tempU16 = -1;
 	else tempU16 = getPackSOC()*10; // VER3_5
@@ -56,41 +56,41 @@ void send_GUI(void)
 	memcpy(tx_buff+4, &stcomm_g.is_comm, stcomm_g.comm_len);
 	sendCan(0x020, tx_buff, 6);
 
-	tempU16 = bat_sens_g.crntSensor[HASS_MAIN_50S];
+	tempU16 = batterySens_g.crntSensor[HASS_MAIN_50S];
 	memcpy(tx_buff, (uint8_t*)&tempU16, 2);
-	tempU16 = bat_sens_g.crntSensor[HASS_ALT_300S];
+	tempU16 = batterySens_g.crntSensor[HASS_ALT_300S];
 	memcpy(tx_buff+2, (uint8_t*)&tempU16, 2);
-	tempU16= bat_sens_g.crntSensor[HASS_MAIN_300S];
+	tempU16= batterySens_g.crntSensor[HASS_MAIN_300S];
 	memcpy(tx_buff+4, (uint8_t*)&tempU16, 2);
-	tempU16= bat_sens_g.crntSensor[HASS_PV_100S];
+	tempU16= batterySens_g.crntSensor[HASS_PV_100S];
 	memcpy(tx_buff+6, (uint8_t*)&tempU16, 2);
 	sendCan(0x024, tx_buff, 8);
 
 	if(disp_debug_data)
 	{
-		tempU16 = bat_sens_g.cellVoltage[0];
+		tempU16 = batterySens_g.cellVoltage[0];
 		memcpy(tx_buff, (uint8_t*)&tempU16, 2);
-		tempU16 = bat_sens_g.cellVoltage[1];
+		tempU16 = batterySens_g.cellVoltage[1];
 		memcpy(tx_buff+2, (uint8_t*)&tempU16, 2);
-		tempU16 = bat_sens_g.cellVoltage[2];
+		tempU16 = batterySens_g.cellVoltage[2];
 		memcpy(tx_buff+4, (uint8_t*)&tempU16, 2);
-		tempU16 = bat_sens_g.cellVoltage[3];
+		tempU16 = batterySens_g.cellVoltage[3];
 		memcpy(tx_buff+6, (uint8_t*)&tempU16, 2);
 		sendCan(0x021, tx_buff, 8);
 
-		tempU16 = bat_sens_g.Temperature[TEMP_MAIN_A];
+		tempU16 = batterySens_g.Temperature[TEMP_MAIN_A];
 		memcpy(tx_buff, (uint8_t*)&tempU16, 2);
-		tempU16 = bat_sens_g.Temperature[TEMP_MAIN_B];
+		tempU16 = batterySens_g.Temperature[TEMP_MAIN_B];
 		memcpy(tx_buff+2, (uint8_t*)&tempU16, 2);
-		tempU16 = bat_sens_g.Temperature[TEMP_DIODE_1];
+		tempU16 = batterySens_g.Temperature[TEMP_DIODE_1];
 		memcpy(tx_buff+4, (uint8_t*)&tempU16, 2);
-		tempU16 = bat_sens_g.Temperature[TEMP_DIODE_2];
+		tempU16 = batterySens_g.Temperature[TEMP_DIODE_2];
 		memcpy(tx_buff+6, (uint8_t*)&tempU16, 2);
 		sendCan(0x022, tx_buff, 8);
 
-		tempU16 = bat_sens_g.Temperature[TEMP_BAT_A];
+		tempU16 = batterySens_g.Temperature[TEMP_BAT_A];
 		memcpy(tx_buff, (uint8_t*)&tempU16, 2);
-		tempU16 = bat_sens_g.Temperature[TEMP_BAT_B];
+		tempU16 = batterySens_g.Temperature[TEMP_BAT_B];
 		memcpy(tx_buff+2, (uint8_t*)&tempU16, 2);
 		sendCan(0x025, tx_buff, 8);
 
@@ -146,54 +146,54 @@ void sendDataToServer(void)
 	if(packetIndex > 0xfffe) packetIndex = 0;
 	strTemp[i++] = (uint8_t)(tempU16>>0);
 	strTemp[i++] = (uint8_t)(tempU16>>8);
-	tempU16 = bat_sens_g.packVoltage;
+	tempU16 = batterySens_g.packVoltage;
 	strTemp[i++] = (uint8_t)(tempU16>>0);
 	strTemp[i++] = (uint8_t)(tempU16>>8);
-	tempINT = bat_sens_g.crntSensor[HASS_MAIN_50S];
+	tempINT = batterySens_g.crntSensor[HASS_MAIN_50S];
 	strTemp[i++] = (uint8_t)(tempINT>>0);
 	strTemp[i++] = (uint8_t)(tempINT>>8);
-	tempINT = bat_sens_g.crntSensor[HASS_ALT_300S];
+	tempINT = batterySens_g.crntSensor[HASS_ALT_300S];
 	strTemp[i++] = (uint8_t)(tempINT>>0);
 	strTemp[i++] = (uint8_t)(tempINT>>8);
-	tempINT = bat_sens_g.crntSensor[HASS_MAIN_300S];
+	tempINT = batterySens_g.crntSensor[HASS_MAIN_300S];
 	strTemp[i++] = (uint8_t)(tempINT>>0);
 	strTemp[i++] = (uint8_t)(tempINT>>8);
-	tempINT = bat_sens_g.crntSensor[HASS_PV_100S];
+	tempINT = batterySens_g.crntSensor[HASS_PV_100S];
 	strTemp[i++] = (uint8_t)(tempINT>>0);
 	strTemp[i++] = (uint8_t)(tempINT>>8);
 	tempU16 = getPackSOC()*10; // VER3_5
 	strTemp[i++] = (uint8_t)(tempU16>>0);
 	strTemp[i++] = (uint8_t)(tempU16>>8);
-	tempINT = bat_sens_g.Temperature[TEMP_MAIN_A];
+	tempINT = batterySens_g.Temperature[TEMP_MAIN_A];
 	strTemp[i++] = (uint8_t)(tempINT>>0);
 	strTemp[i++] = (uint8_t)(tempINT>>8);
-	tempINT = bat_sens_g.Temperature[TEMP_DIODE_1];
+	tempINT = batterySens_g.Temperature[TEMP_DIODE_1];
 	strTemp[i++] = (uint8_t)(tempINT>>0);
 	strTemp[i++] = (uint8_t)(tempINT>>8);
-	tempINT = bat_sens_g.Temperature[TEMP_DIODE_2];
+	tempINT = batterySens_g.Temperature[TEMP_DIODE_2];
 	strTemp[i++] = (uint8_t)(tempINT>>0);
 	strTemp[i++] = (uint8_t)(tempINT>>8);
-	tempINT = bat_sens_g.Temperature[TEMP_MAIN_B];
+	tempINT = batterySens_g.Temperature[TEMP_MAIN_B];
 	strTemp[i++] = (uint8_t)(tempINT>>0);
 	strTemp[i++] = (uint8_t)(tempINT>>8);
-	tempINT = bat_sens_g.Temperature[TEMP_BAT_A];
+	tempINT = batterySens_g.Temperature[TEMP_BAT_A];
 	strTemp[i++] = (uint8_t)(tempINT>>0);
 	strTemp[i++] = (uint8_t)(tempINT>>8);
-	tempINT = bat_sens_g.Temperature[TEMP_BAT_B];
+	tempINT = batterySens_g.Temperature[TEMP_BAT_B];
 	strTemp[i++] = (uint8_t)(tempINT>>0);
 	strTemp[i++] = (uint8_t)(tempINT>>8);
 	tempU16 = getSwitchMode();
 	strTemp[i++] = (uint8_t)(tempU16>>0);
-	tempU16 = bat_sens_g.cellVoltage[0];
+	tempU16 = batterySens_g.cellVoltage[0];
 	strTemp[i++] = (uint8_t)(tempU16>>0);
 	strTemp[i++] = (uint8_t)(tempU16>>8);
-	tempU16 = bat_sens_g.cellVoltage[1];
+	tempU16 = batterySens_g.cellVoltage[1];
 	strTemp[i++] = (uint8_t)(tempU16>>0);
 	strTemp[i++] = (uint8_t)(tempU16>>8);
-	tempU16 = bat_sens_g.cellVoltage[2];
+	tempU16 = batterySens_g.cellVoltage[2];
 	strTemp[i++] = (uint8_t)(tempU16>>0);
 	strTemp[i++] = (uint8_t)(tempU16>>8);
-	tempU16 = bat_sens_g.cellVoltage[3];
+	tempU16 = batterySens_g.cellVoltage[3];
 	strTemp[i++] = (uint8_t)(tempU16>>0);
 	strTemp[i++] = (uint8_t)(tempU16>>8);
 	tempU16 = getcellcapacity()*10;              // 10Ah
@@ -211,9 +211,9 @@ void sendDataToServer(void)
 	strTemp[i++] = (uint8_t)(tempINT>>0);
 
 	uint8_t cmd=0;
-	cmd |= (ltc_stat_g.bal & 0x03);   // 0x01과 0x02 비트를 합친다
-	cmd |= (ltc_stat_g.bal & 0x20) >> 3; // 0x20 비트를 오른쪽으로 5비트 시프트하여 0x03 비트에 추가한다
-	cmd |= (ltc_stat_g.bal & 0x80) >> 4; // 0x80 비트를 오른쪽으로 6비트 시프트하여 0x03 비트에 추가한다
+	cmd |= (bmsCtrl_Bal_g & 0x03);   // 0x01과 0x02 비트를 합친다
+	cmd |= (bmsCtrl_Bal_g & 0x20) >> 3; // 0x20 비트를 오른쪽으로 5비트 시프트하여 0x03 비트에 추가한다
+	cmd |= (bmsCtrl_Bal_g & 0x80) >> 4; // 0x80 비트를 오른쪽으로 6비트 시프트하여 0x03 비트에 추가한다
 	strTemp[i++] = (uint8_t)cmd;
 	tempU16 = 0;
 	strTemp[i++] = (uint8_t)(tempU16>>8);

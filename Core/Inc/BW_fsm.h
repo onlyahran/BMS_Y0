@@ -23,6 +23,6 @@ typedef struct
 
 extern void fsmInit(void);
 extern void fsmEvent(void);
-extern void fsmTestEvent(void);
+extern void test_FsmEvent(void);
 void uartParser(void);
 #endif /* BW_FSM_H_ */

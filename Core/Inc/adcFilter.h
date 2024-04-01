@@ -16,14 +16,13 @@
 
 #include "main.h"
 
-#define ADCFILTER_LIMIT_SIZE  (50)
+#define WINDOWS_MAX_SIZE  (20)
 
 typedef struct{
-	int arr[ADCFILTER_LIMIT_SIZE];
+	int arr[WINDOWS_MAX_SIZE];
 	int cnt;
-}stMedFilter;
+}stSensorFilter;
 
-ADCFILTER_EXT int findMedian(int* values, int size);
-ADCFILTER_EXT bool adcFilter_Med(stMedFilter *filter, int filter_max, int adc_raw, int* med);
+ADCFILTER_EXT bool adcFilter_Med(stSensorFilter *filter, int filter_max, int adc_raw, int* med);
 ADCFILTER_EXT int findMedian(int* values, int size);
 #endif /* INC_ADCFILTER_H_ */
